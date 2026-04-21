@@ -1,0 +1,19 @@
+{
+  "base_url": "http://192.168.1.45:8908",
+  "auth": {
+    "type": "basic",
+    "username": "opencode",
+    "password": "opencode"
+  },
+  "model": {
+    "modelID": "MiniMax-M2.7",
+    "providerID": "minimax-cn-coding-plan"
+  },
+  "sessions": [
+    {
+      "pawSessionId": "default",
+      "opencodeSessionId": "default",
+      "dir": "default"
+    }
+  ]
+}
