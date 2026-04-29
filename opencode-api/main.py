@@ -232,12 +232,16 @@ def main():
     elif cmd == "send-message":
         message = None
         model = None
+        provider = None
         
         # 解析参数
         j = i + 1
         while j < len(sys.argv):
             if sys.argv[j] == "--model" and j + 1 < len(sys.argv):
                 model = sys.argv[j + 1]
+                j += 2
+            elif sys.argv[j] == "--provider" and j + 1 < len(sys.argv):
+                provider = sys.argv[j + 1]
                 j += 2
             elif not message:
                 # 第一个未识别的参数作为 message
@@ -250,19 +254,23 @@ def main():
             print_result({"status": "error", "message": "缺少参数：message（聊天内容）"})
             return
         
-        result = send_message(message, model=model)
+        result = send_message(message, model=model, provider=provider)
         print_result(result)
     
     # 发送计划指令（agent=plan）
     elif cmd == "plan":
         message = None
         model = None
+        provider = None
         
         # 解析参数
         j = i + 1
         while j < len(sys.argv):
             if sys.argv[j] == "--model" and j + 1 < len(sys.argv):
                 model = sys.argv[j + 1]
+                j += 2
+            elif sys.argv[j] == "--provider" and j + 1 < len(sys.argv):
+                provider = sys.argv[j + 1]
                 j += 2
             elif not message:
                 # 第一个未识别的参数作为 message
@@ -275,7 +283,7 @@ def main():
             print_result({"status": "error", "message": "缺少参数：message（聊天内容）"})
             return
         
-        result = send_message(message, model=model, agent="plan")
+        result = send_message(message, model=model, provider=provider, agent="plan")
         print_result(result)
     
     else:

@@ -52,8 +52,8 @@ python main.py --session-id 1776356413363 send-message '你的问题'
 
 > ⚠️ **重要约束**：Agent 调用 `send-message` 时，**必须原样转发用户输入的消息**，不得添加任何额外信息（如工作目录说明、上下文补充等）。工作目录已通过 `x-opencode-directory` header 传递，无需在消息正文中重复。
 
-# 发送消息并指定模型
-python main.py --session-id 1776356413363 send-message '你的问题' --model <modelid>
+# 发送消息并指定模型和provider
+python main.py --session-id 1776356413363 send-message '你的问题' --model <modelid> --provider <providerid>
 
 # 发送消息并指定 agent
 python main.py --session-id 1776356413363 send-message '你的问题' --agent <agentname>
@@ -76,8 +76,8 @@ python main.py help
 | `set-dir` | 设置当前会话的工作目录（POST 请求会携带 x-opencode-directory header） | |
 | `get-messagelist` | 获取当前会话的消息列表 | 可选：`--limit` |
 | `get-message` | 获取指定消息的详情 | |
-| `send-message` | 发送消息并等待响应，**原样转发用户输入**，不添加任何额外信息 | 必填：消息内容（必须原样转发）；可选：`--model`、`--agent` |
-| `plan` | 发送计划指令（agent=plan），用于需求分析和规划 | 必填：消息内容；可选：`--model` |
+| `send-message` | 发送消息并等待响应，**原样转发用户输入**，不添加任何额外信息 | 必填：消息内容（必须原样转发）；可选：`--model`、`--provider`、`--agent` |
+| `plan` | 发送计划指令（agent=plan），用于需求分析和规划 | 必填：消息内容；可选：`--model`、`--provider` |
 | `help` | 显示帮助信息 | 无 |
 
 ## Session ID 管理
@@ -111,7 +111,7 @@ Session ID 从对话开头的分隔区域获取：
 
 ## 配置文件
 
-配置文件位于 `../opencode-config/opencode_config.json`（相对于 skills/opencode-api 目录），每个 QwenPaw 会话独立存储配置：
+配置文件位于 `skills/opencode-config/opencode_config.json`，每个 QwenPaw 会话独立存储配置：
 
 ```json
 {

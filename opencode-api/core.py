@@ -10,10 +10,11 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
 
-# 配置路径
+# 配置路径 - 使用共享配置文件
 SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
 OPENCODER_DIR = os.path.dirname(SKILL_DIR)  # .../opencoder
-CONFIG_PATH = os.path.join(SKILL_DIR, "opencode-config", "opencode_config.json")
+SHARED_CONFIG_PATH = os.path.join(OPENCODER_DIR, "opencode-config", "opencode_config.json")
+LOCAL_CONFIG_PATH = os.path.join(SKILL_DIR, "opencode-config", "opencode_config.json")
 
 # ===== 日志配置 =====
 LOGS_DIR = os.path.join(SKILL_DIR, "logs")
@@ -128,22 +129,25 @@ def get_current_paw_session_id() -> str:
 
 
 def load_config() -> Dict[str, Any]:
-    """加载 OpenCode 配置文件"""
-    if not os.path.exists(CONFIG_PATH):
+    """加载 OpenCode 配置文件，优先使用共享配置"""
+    # 优先使用共享配置
+    config_path = SHARED_CONFIG_PATH if os.path.exists(SHARED_CONFIG_PATH) else LOCAL_CONFIG_PATH
+    
+    if not os.path.exists(config_path):
         return {
             "base_url": "http://localhost:4096",
             "auth": {"type": "basic", "username": "opencode", "password": ""},
             "sessions": []
         }
     
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_config(config: Dict[str, Any]) -> None:
-    """保存配置到文件"""
-    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+    """保存配置到共享配置文件"""
+    os.makedirs(os.path.dirname(SHARED_CONFIG_PATH), exist_ok=True)
+    with open(SHARED_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=2)
 
 
@@ -381,15 +385,16 @@ def get_message(messageid: str) -> Dict[str, Any]:
     return make_request("GET", f"/session/{session_id}/message/{messageid}", config)
 
 
-def send_message(original_message: str, model: Optional[str] = None, agent: Optional[str] = None) -> Dict[str, Any]:
+def send_message(original_message: str, model: Optional[str] = None, agent: Optional[str] = None, provider: Optional[str] = None) -> Dict[str, Any]:
     """
     发送消息并等待响应
 
     Args:
         original_message: 用户输入的聊天内容（必须原样发送，不做任何处理）
             注意：此参数在日志中记录为 "原始消息"，API 请求体中的 text 字段必须与此完全一致
-        model: 可选，指定模型 ID（格式：{"modelID": "...", "providerID": "..."}）
+        model: 可选，指定模型 ID。如果为空，自动从配置文件读取
         agent: 可选，指定 agent 类型（默认为 "build"，可用 "plan"）
+        provider: 可选，指定 provider ID。如果为空，自动从配置文件读取
 
     Returns:
         包含 info 和 parts 的响应
@@ -409,6 +414,11 @@ def send_message(original_message: str, model: Optional[str] = None, agent: Opti
     # 计算原始消息的哈希值，用于验证
     message_hash = hashlib.sha256(original_message.encode('utf-8')).hexdigest()[:16]
 
+    # 自动从配置文件读取模型和 provider（如果未指定）
+    model_config = config.get("model", {})
+    effective_model = model or model_config.get("modelID")
+    effective_provider = provider or model_config.get("providerID")
+
     # 构建请求体 - 关键：必须使用 original_message原值，不得修改
     body = {
         "role": "user",
@@ -416,14 +426,22 @@ def send_message(original_message: str, model: Optional[str] = None, agent: Opti
         "agent": agent or "build"  # 默认使用 "build"，可指定 "plan" 等
     }
 
-    if model:
-        body["model"] = model
+    # 处理 model 和 provider
+    if effective_model or effective_provider:
+        model_info = {}
+        if effective_model:
+            model_info["modelID"] = effective_model
+        if effective_provider:
+            model_info["providerID"] = effective_provider
+        body["model"] = model_info
 
     # 记录原始消息到日志（用于审计对比）
     api_logger.info("=" * 60)
     api_logger.info(f"📝 原始消息 [hash:{message_hash}]")
     api_logger.info(f"   text: {original_message}")
     api_logger.info(f"   agent: {body['agent']}")
+    if "model" in body:
+        api_logger.info(f"   model: {body['model']}")
     api_logger.info("=" * 60)
 
     response = make_request("POST", f"/session/{session_id}/message", config, data=body)

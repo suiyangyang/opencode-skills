@@ -79,7 +79,7 @@ pending → processing → develop_done → testing → done
 
 ## 配置文件
 
-> **注意**：配置统一使用 opencode-config 的配置文件 `../opencode-config/opencode_config.json`（相对于 skills/opencode-orchestrator 目录）
+> **注意**：配置统一使用 opencode-config 的配置文件 `skills/opencode-config/opencode_config.json`
 
 ### opencode_config.json
 ```json
@@ -99,7 +99,62 @@ pending → processing → develop_done → testing → done
 | base_url | OpenCode 服务器地址 | http://localhost:4096 |
 | auth.username | 认证用户名 | opencode |
 | auth.password | 认证密码 | (空) |
-| timeout | 请求超时时间(秒) | 300 (5分钟) |
+| timeout | 总超时时间(秒)，包括轮询总时间 | 300 (5分钟) |
+| poll_interval | 轮询间隔(秒) | 5 |
+| poll_timeout | 单次轮询请求超时(秒) | 30 |
+| model.max_ctx | 模型最大上下文 | 32768 |
+| model.compact_threshold | 压缩触发阈值(80%=0.8) | 0.8 |
+
+### 消息发送机制（方案 A）
+
+从 v2.0 开始，使用异步 API + 客户端轮询机制：
+
+1. **发送消息**：使用 `POST /session/:id/prompt_async`（立即返回 204）
+2. **轮询结果**：使用 `GET /session/:id/message/:messageID` 轮询获取处理结果
+3. **超时控制**：应用层控制总超时和轮询间隔，更灵活
+
+优势：
+- 避免 requests timeout 导致的连接断开
+- 支持断点续传
+- 更灵活的超时和重试逻辑
+
+## 上下文自动压缩
+
+当 input tokens 达到模型最大上下文的阈值（默认 80%）时，在下一次发送消息前自动执行压缩。
+
+### 压缩机制
+
+1. **触发时机**：下一次发送消息前
+2. **触发条件**：`input_tokens / max_ctx >= compact_threshold`
+3. **超时时间**：3 分钟
+4. **重试次数**：1 次
+5. **压缩失败**：继续执行任务（不阻塞）
+
+### 配置示例
+
+```json
+{
+  "base_url": "http://192.168.1.45:8908",
+  "auth": {
+    "type": "basic",
+    "username": "your_username",
+    "password": "your_password"
+  },
+  "model": {
+    "modelID": "qwen-27b",
+    "providerID": "realer",
+    "max_ctx": 80000,
+    "compact_threshold": 0.8
+  }
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| modelID | 模型 ID，如 qwen-27b |
+| providerID | 模型提供者 ID，如 realer |
+| max_ctx | 模型最大上下文，根据实际模型调整 |
+| compact_threshold | 压缩触发阈值，0.8 表示 80% |
 
 ### tasks.json
 ```json
