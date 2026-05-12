@@ -1,0 +1,33 @@
+# IDE
+.vs/
+.vscode/
+*.suo
+*.user
+*.sln.docstates
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# Runtime data
+logs/
+tasks.json
+state.json
+
+# Config with sensitive info
+opencode-config/opencode_config.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# SQLite
+*.sqlite
+*.sqlite3
